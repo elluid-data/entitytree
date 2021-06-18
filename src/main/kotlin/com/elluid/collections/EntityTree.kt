@@ -4,7 +4,7 @@ import kotlin.collections.ArrayDeque
 
 class EntityTree<T>(val mode : Behavior = Behavior.NO_INSERT_ON_ILLEGAL_PARENT_ID) : Iterable<T> where T : Node<T>, T : Comparable<T> {
     val rootNodes = mutableListOf<T>()
-    val idSet = mutableSetOf<Int>()
+    val idSet = mutableSetOf<Int>() // All primary ids.
 
     fun add(entity: T) {
         replaceIfExists(entity)
@@ -12,16 +12,17 @@ class EntityTree<T>(val mode : Behavior = Behavior.NO_INSERT_ON_ILLEGAL_PARENT_I
         if (entity.getParentId() == 0) {
             rootNodes.add(entity)
             idSet.add(entity.getId())
-        } else {
+        } else { // Add to a parent
+            // Throws exception if Behavior.EXCEPTION_ON_ILLEGAL_PARENT_ID is set
+            //  Otherwise just exits function.
+            if(!parentIdExists(entity.getParentId())) return
+
             var insertComplete = false
             for (root in rootNodes) {
                 insertComplete = addChild(root, entity)
                 if(insertComplete) {
                     break
                 }
-            }
-            if(!insertComplete && mode == Behavior.EXCEPTION_ON_ILLEGAL_PARENT_ID) {
-                throw IllegalArgumentException("parentId not found")
             }
         }
     }
@@ -32,7 +33,6 @@ class EntityTree<T>(val mode : Behavior = Behavior.NO_INSERT_ON_ILLEGAL_PARENT_I
 
             parent.getId() == entity.getParentId() -> {
                 parent.addChild(entity)
-                parent.getChildren().sort()
                 idSet.add(entity.getId())
                 return true
             }
@@ -201,6 +201,17 @@ class EntityTree<T>(val mode : Behavior = Behavior.NO_INSERT_ON_ILLEGAL_PARENT_I
     fun contains(id: Int) : Boolean {
         return idSet.contains(id)
     }
+
+    private fun parentIdExists(id: Int) : Boolean {
+        val parentExists = contains(id)
+        if(!parentExists && mode == Behavior.EXCEPTION_ON_ILLEGAL_PARENT_ID) {
+            throw IllegalArgumentException("parentId not found")
+        }
+
+        return parentExists
+    }
+
+
 
 }
 
